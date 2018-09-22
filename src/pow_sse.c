@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <uv.h>
 #include "constants.h"
 #include "cpu-utils.h"
 #include "curl.h"
@@ -258,7 +259,12 @@ static void *pworkThread(void *pitem)
         pworkInfo->n = -1;
     }
     pthread_mutex_unlock(pworkInfo->lock);
-    pthread_exit(NULL);
+    // pthread_exit(NULL);
+}
+
+static void work_cb(uv_work_t* req)
+{
+    pworkThread(req->data);
 }
 
 static int8_t *tx_to_cstate(Trytes_t *tx)
@@ -316,9 +322,13 @@ bool PowSSE(void *pow_ctx)
     /* Initialize the context */
     ctx->stopPoW = 0;
     pthread_mutex_init(&ctx->lock, NULL);
-    pthread_t *threads = ctx->threads;
+    // pthread_t *threads = ctx->threads;
+    uv_loop_t *loop_ptr = &ctx->loop;
     Pwork_struct *pitem = ctx->pitem;
+    uv_work_t *work_req = ctx->work_req;
     int8_t **nonce_array = ctx->nonce_array;
+
+    uv_loop_init(loop_ptr);
 
     /* Prepare the input trytes for algorithm */
     Trytes_t *trytes_t = initTrytes(ctx->input_trytes, TRANSACTION_LENGTH / 3);
@@ -336,12 +346,16 @@ bool PowSSE(void *pow_ctx)
         pitem[i].lock = &ctx->lock;
         pitem[i].stopPoW = &ctx->stopPoW;
         pitem[i].ret = 0;
-        pthread_create(&threads[i], NULL, pworkThread, (void *) &pitem[i]);
+        work_req[i].data = &pitem[i];
+        // pthread_create(&threads[i], NULL, pworkThread, (void *) &pitem[i]);
+        uv_queue_work(loop_ptr, &work_req[i], work_cb, NULL);
     }
 
     int completedIndex = -1;
+
+    uv_run(loop_ptr, UV_RUN_DEFAULT);
     for (int i = 0; i < ctx->num_threads; i++) {
-        pthread_join(threads[i], NULL);
+        // pthread_join(threads[i], NULL);
         if (pitem[i].n == -1)
             completedIndex = i;
     }
@@ -371,11 +385,11 @@ static bool PoWSSE_Context_Initialize(ImplContext *impl_ctx)
     PoW_SSE_Context *ctx = (PoW_SSE_Context *) malloc(sizeof(PoW_SSE_Context) * impl_ctx->num_max_thread);
     if(!ctx) return false;
     for (int i = 0; i < impl_ctx->num_max_thread; i++) {
-        ctx[i].threads = (pthread_t *) malloc(sizeof(pthread_t) * nproc);
+        ctx[i].work_req = (uv_work_t *) malloc(sizeof(uv_work_t) * nproc);
         ctx[i].pitem = (Pwork_struct *) malloc(sizeof(Pwork_struct) * nproc);
         ctx[i].nonce_array = (int8_t **) malloc(sizeof(int *) * nproc);
         void *chunk = malloc(NonceTrinarySize * nproc);
-        if (!ctx[i].threads || !ctx[i].pitem || !ctx[i].nonce_array || !chunk) return false;
+        if (!ctx[i].work_req || !ctx[i].pitem || !ctx[i].nonce_array || !chunk) return false;
         for (int j = 0; j < nproc; j++)
             ctx[i].nonce_array[j] = (int8_t *) (chunk + j * NonceTrinarySize);
         ctx[i].num_threads = nproc;
@@ -390,7 +404,7 @@ static void PoWSSE_Context_Destroy(ImplContext *impl_ctx)
 {
     PoW_SSE_Context *ctx = (PoW_SSE_Context *) impl_ctx->context;
     for (int i = 0; i < impl_ctx->num_max_thread; i++) {
-        free(ctx[i].threads);
+        free(ctx[i].work_req);
         free(ctx[i].pitem);
         free(ctx[i].nonce_array[0]);
         free(ctx[i].nonce_array);

@@ -1,7 +1,7 @@
 OUT ?= ./build
 SRC := src
 
-CFLAGS = -Wall -fPIC -std=c99
+CFLAGS = -Wall -fPIC -std=gnu99
 LDFLAGS = \
 	-lpthread
 
@@ -86,6 +86,7 @@ OBJS = \
 	dcurl.o \
 	implcontext.o
 
+
 ifeq ("$(BUILD_AVX)","1")
 OBJS += pow_avx.o
 else
@@ -116,19 +117,19 @@ OBJS := $(addprefix $(OUT)/, $(OBJS))
 
 $(OUT)/test-%.o: tests/test-%.c
 	$(VECHO) "  CC\t$@\n"
-	$(Q)$(CC) -o $@ $(CFLAGS) -I $(SRC) -c -MMD -MF $@.d $<
+	$(Q)$(CC) -o $@ $(CFLAGS) -I deps/libtuv/include -I $(SRC) -c -MMD -MF $@.d $<
 
 $(OUT)/%.o: $(SRC)/%.c
 	$(VECHO) "  CC\t$@\n"
-	$(Q)$(CC) -o $@ $(CFLAGS) -c -MMD -MF $@.d $<
+	$(Q)$(CC) -o $@ $(CFLAGS) -I deps/libtuv/include -c -MMD -MF $@.d $<
 
 $(OUT)/test-%: $(OUT)/test-%.o $(OBJS)
 	$(VECHO) "  LD\t$@\n"
-	$(Q)$(CC) -o $@ $^ $(LDFLAGS)
+	$(Q)$(CC) -o $@ $^ deps/libtuv/build/x86_64-linux/debug/lib/libtuv.o $(LDFLAGS)
 
 $(OUT)/libdcurl.so: $(OBJS)
 	$(VECHO) "  LD\t$@\n"
-	$(Q)$(CC) -shared -o $@ $^ $(LDFLAGS)
+	$(Q)$(CC) -shared -o $@ $^ deps/libtuv/build/x86_64-linux/debug/lib/libtuv.o $(LDFLAGS)
 
 $(OUT)/test-%: tests/test-%.py $(OUT)/libdcurl.so
 	$(Q)echo "#!$(PYTHON)" > $@
