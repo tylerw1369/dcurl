@@ -1,12 +1,13 @@
 #ifndef POW_AVX_H_
 #define POW_AVX_H_
 
-#include "trinary.h"
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <pthread.h>
+#include <uv.h>
 #include "common.h"
 #include "constants.h"
+#include "trinary.h"
 
 typedef struct _pwork_struct Pwork_struct;
 
@@ -25,7 +26,9 @@ typedef struct _pow_avx_context PoW_AVX_Context;
 struct _pow_avx_context {
     /* Resource of computing */
     pthread_mutex_t lock;
-    pthread_t *threads;
+    /* Data type of libtuv */
+    uv_loop_t loop;
+    uv_work_t *work_req;
     Pwork_struct *pitem;
     int8_t **nonce_array;
     int stopPoW;
@@ -34,14 +37,12 @@ struct _pow_avx_context {
     /* Management of Multi-thread */
     int indexOfContext;
     /* Arguments of PoW */
-    int8_t input_trytes[TRANSACTION_TRYTES_LENGTH]; /* 2673 */
+    int8_t input_trytes[TRANSACTION_TRYTES_LENGTH];  /* 2673 */
     int8_t output_trytes[TRANSACTION_TRYTES_LENGTH]; /* 2673 */
     int mwm;
     /* PoW-related information */
     PoW_Info pow_info;
 };
-
-bool PowAVX(void *pow_ctx);
 
 #ifdef _MSC_VER
 #include <intrin.h>
