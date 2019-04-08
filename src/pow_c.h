@@ -1,13 +1,12 @@
 #ifndef POW_C_H_
 #define POW_C_H_
 
-#include <pthread.h>
+#include "trinary.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include <uv.h>
+#include <pthread.h>
 #include "common.h"
 #include "constants.h"
-#include "trinary.h"
 
 typedef struct _pwork_struct Pwork_struct;
 
@@ -27,9 +26,7 @@ typedef struct _pow_c_context PoW_C_Context;
 struct _pow_c_context {
     /* Resource of computing */
     pthread_mutex_t lock;
-    /* Data type of libtuv */
-    uv_loop_t loop;
-    uv_work_t *work_req;
+    pthread_t *threads;
     Pwork_struct *pitem;
     int8_t **nonce_array;
     int stopPoW;
@@ -38,12 +35,14 @@ struct _pow_c_context {
     /* Management of Multi-thread */
     int indexOfContext;
     /* Arguments of PoW */
-    int8_t input_trytes[TRANSACTION_TRYTES_LENGTH];  /* 2673 */
+    int8_t input_trytes[TRANSACTION_TRYTES_LENGTH]; /* 2673 */
     int8_t output_trytes[TRANSACTION_TRYTES_LENGTH]; /* 2673 */
     int mwm;
     /* PoW-related information */
     PoW_Info pow_info;
 };
+
+bool PowC(void *pow_ctx);
 
 #define HBITS 0xFFFFFFFFFFFFFFFFuLL
 #define LBITS 0x0000000000000000uLL

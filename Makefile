@@ -18,7 +18,7 @@ endif
 -include $(OUT)/local.mk
 
 ifeq ("$(BUILD_DEBUG)","1")
-CFLAGS += -Og -g3 -DENABLE_DEBUG
+CFLAGS += -Og -g3
 else
 # Enable all the valid optimizations for standard programs in release build
 CFLAGS += -O3
@@ -26,9 +26,6 @@ endif
 
 # Check specific CPU features available on build host
 include mk/cpu-features.mk
-
-# Handle git submodule
-include mk/submodule.mk
 
 ifeq ("$(BUILD_AVX)","1")
 CFLAGS += -mavx -DENABLE_AVX
@@ -118,19 +115,19 @@ endif
 
 OBJS := $(addprefix $(OUT)/, $(OBJS))
 
-$(OUT)/test-%.o: tests/test-%.c $(LIBTUV_PATH)/include
+$(OUT)/test-%.o: tests/test-%.c
 	$(VECHO) "  CC\t$@\n"
-	$(Q)$(CC) -o $@ $(CFLAGS) -I $(SRC) $(LIBTUV_INCLUDE) -c -MMD -MF $@.d $<
+	$(Q)$(CC) -o $@ $(CFLAGS) -I $(SRC) -c -MMD -MF $@.d $<
 
-$(OUT)/%.o: $(SRC)/%.c $(LIBTUV_PATH)/include
+$(OUT)/%.o: $(SRC)/%.c
 	$(VECHO) "  CC\t$@\n"
-	$(Q)$(CC) -o $@ $(CFLAGS) $(LIBTUV_INCLUDE) -c -MMD -MF $@.d $<
+	$(Q)$(CC) -o $@ $(CFLAGS) -c -MMD -MF $@.d $<
 
-$(OUT)/test-%: $(OUT)/test-%.o $(OBJS) $(LIBTUV_LIBRARY)
+$(OUT)/test-%: $(OUT)/test-%.o $(OBJS)
 	$(VECHO) "  LD\t$@\n"
 	$(Q)$(CC) -o $@ $^ $(LDFLAGS)
 
-$(OUT)/libdcurl.so: $(OBJS) $(LIBTUV_LIBRARY)
+$(OUT)/libdcurl.so: $(OBJS)
 	$(VECHO) "  LD\t$@\n"
 	$(Q)$(CC) -shared -o $@ $^ $(LDFLAGS)
 

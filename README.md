@@ -1,70 +1,173 @@
 # dcurl - Multi-threaded Curl implementation
 
 [![Build Status](https://travis-ci.org/DLTcollab/dcurl.svg?branch=dev)](https://travis-ci.org/DLTcollab/dcurl)
-![Supported IRI version](https://img.shields.io/badge/Supported%20IRI%20Version-1.6.0-brightgreen.svg)
+![Supported IRI version](https://img.shields.io/badge/Supported%20IRI%20Version-1.5.3-brightgreen.svg)
 
 Hardware-accelerated implementation for IOTA PearlDiver, which utilizes multi-threaded SIMD, FPGA and GPU.
 
-## Introduction
+# Introduction
 dcurl exploits SIMD instructions on CPU and OpenCL on GPU. Both CPU and GPU accelerations can be
-enabled in multi-threaded execuction fashion, resulting in much faster [proof-of-work (PoW) for IOTA](https://docs.iota.org/docs/the-tangle/0.1/concepts/proof-of-work).
-In addition, dcurl supports FPGA-accelerated PoW, described in [docs/fpga-accelerator.md](docs/fpga-accelerator.md).
-dcurl can be regarded as the drop-in replacement for [ccurl](https://github.com/iotaledger/ccurl).
-IOTA Reference Implementation (IRI) adaptation is available to benefit from hardware-accelerated PoW.
+enabled in multi-threaded execuction fashion, resulting in much faster proof-of-work (PoW) for IOTA
+Reference Implementation (IRI). Additionally, dcurl also supports the FPGA-accelerated solution further described in docs/FPGA-ACCEL.md
 
+# Warning
+* You need to configure paths and flags of OpenCL installation in ```mk/opencl.mk```
+* dcurl will automatically configure all the GPU divices on your platform.
+* Check JDK installation and set JAVA_HOME if you wish to specify.
+* If your platform doesn't support Intel SSE, dcurl would be compiled with naive implementation.
+* For the IOTA hardware accelerator, we integrate [Lampa Lab's Cyclone V FPGA PoW](https://github.com/LampaLab/iota_fpga) into dcurl. Lampa Lab provides soc_system.rbf only for DE10-nano board. You need to synthesize to get soc_system.rbf for using Arrow SoCKit board and [this RBF file](https://github.com/ajblane/dcurl/releases/tag/v1.0-SoCKit) can be downloaded from our release. Moreover, you need to download [Lampa Lab-provided Linux image](https://github.com/LampaLab/iota_fpga/releases/tag/v0.1) to flash into the micro-SD card and root password is 123456. Finally, you also need to download dcurl into root directory.
 
-## Build Instructions
-Check [docs/build-n-test.md](docs/build-n-test.md) for details.
+# Build Instructions
+* dcurl allows various combinations of build configurations to fit final use scenarios.
+* You can execute `make config` and then edit file `build/local.mk` for custom build options.
+    - ``BUILD_AVX``: build Intel AVX-accelerated Curl backend.
+    - ``BUILD_GPU``: build OpenCL-based GPU accelerations.
+    - ``BUILD_JNI``: build a shared library for IRI. The build system would generate JNI header file
+                     downloading from [latest JAVA source](https://github.com/DLTcollab/iri).
+    - ``BUILD_COMPAT``: build extra cCurl compatible interface.
+    - ``BUILD_FPGA_ACCEL``: build the interface interacting with the Cyclone V FPGA based accelerator. Verified on DE10-nano board and Arrow SoCKit board.
+    - ``BUILD_STAT``: show the statistics of the PoW information.
+* Alternatively, you can specify conditional build as following:
+```shell
+$ make BUILD_GPU=0 BUILD_JNI=1 BUILD_AVX=1
+```
 
+# Test
+* Test with GPU
+```shell
+$ make BUILD_GPU=1 check
+```
 
-## Performance
-After integrating dcurl into IRI, performance of [attachToTangle](https://iota.readme.io/reference#attachtotangle) is measured as following.
+* Expected Results
+```
+*** Validating build/test-trinary ***
+        [ Verified ]
+*** Validating build/test-curl ***
+        [ Verified ]
+*** Validating build/test-durl ***
+[dcurl] Implementation GPU (OpenCL) is initialized successfully
+        [ Verified ]
+*** Validating build/test-multi_pow ***
+        [ Verified ]
+*** Validating build/test-pow ***
+GPU - OpenCL
+[dcurl] Implementation GPU (OpenCL) is initialized successfully
+Success.
+        [ Verified ]
+```
+
+* Test with AVX but no GPU
+```shell
+$ make BUILD_AVX=1 check
+```
+
+* Expected Results
+```
+*** Validating build/test-trinary ***
+        [ Verified ]
+*** Validating build/test-curl ***
+        [ Verified ]
+*** Validating build/test-dcurl ***
+[dcurl] Implementation CPU (Intel AVX) is initialized successfully
+        [ Verified ]
+*** Validating build/test-multi_pow_cpu ***
+        [ Verified ]
+*** Validating build/test-pow ***
+CPU - AVX
+[dcurl] Implementation CPU (Intel AVX) is initialized successfully
+Success.
+        [ Verified ]
+```
+
+* Test with AVX and show the PoW statistics
+```shell
+$ make BUILD_AVX=1 BUILD_STAT=1 check
+```
+
+* Expected Results
+```
+*** Validating build/test-trinary ***
+        [ Verified ]
+*** Validating build/test-curl ***
+        [ Verified ]
+*** Validating build/test-dcurl ***
+[dcurl] Implementation CPU (Intel AVX) is initialized successfully
+        [ Verified ]
+*** Validating build/test-multi-pow ***
+[dcurl] Implementation CPU (Intel AVX) is initialized successfully
+        [ Verified ]
+*** Validating build/test-pow ***
+CPU - AVX
+[dcurl] Implementation CPU (Intel AVX) is initialized successfully
+Hash count: 3182602
+PoW execution time: 0.434 sec
+Hash rate: 7333.736 kH/sec
+Success.
+        [ Verified ]
+```
+
+* Test with Arrow SoCKit board
+```shell
+root@lampa:~# sh init_curl_pow.sh 
+root@lampa:~# cd dcurl
+root@lampa:~/dcurl# make BUILD_STAT=1 BUILD_FPGA_ACCEL=1 check
+```
+
+* Expected Results
+```
+*** Validating build/test-trinary ***
+        [ Verified ]
+*** Validating build/test-curl ***
+        [ Verified ]
+*** Validating build/test-dcurl ***
+[dcurl] Implementation CPU (Pure C) is initialized successfully
+[dcurl] Implementation FPGA is initialized successfully
+        [ Verified ]
+*** Validating build/test-multi_pow ***
+        [ Verified ]
+*** Validating build/test-pow ***
+CPU - pure C
+[dcurl] Implementation CPU (Pure C) is initialized successfully
+Hash count: 836032
+PoW execution time: 43.000 sec
+Hash rate: 19.443 kH/sec
+Success.
+FPGA
+[dcurl] Implementation FPGA is initialized successfully
+Hash count: 5125680
+PoW execution time: 0.152 sec
+Hash rate: 33734.938 kH/sec
+Success.
+        [ Verified ] 
+```
+
+# Tweaks
+* Number of threads to find nonce in CPU
+    * ```$ export DCURL_NUM_CPU=26```
+
+# Performance
+After integrating dcurl into IRI, performance of <```attachToTangle```> is measured as following.
 * Each sampling is measured with 30 transaction trytes and total 200 samples are measured.
 * mwm = 14, 26 CPU threads to find nonce
 * Settings: enable 2 pow tasks in CPU, 1 pow tasks in GPU at the same time
-![](https://raw.githubusercontent.com/DLTcollab/dcurl/dev/docs/benchmark.png)
+![](https://lh4.googleusercontent.com/2U_TpfAtEbPdHBcGKD1zl0t0bzo2Rubj0DxXxvV-Rh31Yr7oCCtptutQpLLizMgR7ousEXUtwM6RASnQLOJnGePhQ5Emh1w8l8GlKzMtZ0Yv-TySF2gh3u48BAmllAJv2VjNaxgFGCA)
 
-
-## IRI Adaptation
+# IRI Adaptation
 [Modified IRI accepting external PoW Library](https://github.com/DLTcollab/iri)
-Supported IRI version: 1.6.0
+Supported IRI version: 1.5.3
 * ```$ cd ~/iri && mvn compile && mvn package```
 * ```$ cp ~/dcurl/build/libdcurl.so ~/iri```
 * ```$ cd ~/iri && java -Djava.library.path=./ -jar target/iri.jar -p <port> --pearldiver-exlib dcurl```
 
-
-## Adoptions
-Here is a partial list of open source projects that have adopted dcurl. If you
-are using dcurl and would like your projects added to the list, please send
-pull requests to dcurl.
-
-1. [iota-gpu-pow](https://github.com/gagathos/iota-gpu-pow): IOTA PoW node
+# IOTA PoW Node
+[gagathos/iota-gpu-pow](https://github.com/gagathos/iota-gpu-pow)
 * You can construct a IOTA PoW node, which uses `ccurl` by default
-* Generate a drop-in replacement for `ccurl` and acquire performance boost.
+* Generate a drop-in replacement for `ccurl` and acquire performance boost!
     * ```$ make BUILD_COMPAT=1 check```
     * ```$ cp ./build/libdcurl.so <iota-gpu-pow>/libccurl.so```
 
-2. [iota.keccak.pow.node.js](https://github.com/SteppoFF/iota.keccak.pow.node.js): IOTA PoW node using the iota.keccak.js implementation
-* [iota.keccak.js](https://github.com/SteppoFF/iota.keccak.js) can be used to
-  build high performance node-js spammers but is also capable of signing
-  inputs for value bundles. Using a smart implementation and remote PoW,
-  it is capable of performing > 100 TPS for IRI.
+# Licensing
 
-3. [IOTA PoW Hardware Accelerator FPGA for Raspberry Pi](https://microengineer.eu/2018/04/25/iota-pearl-diver-fpga/) took dcurl for prototyping.
-* Check [shufps/dcurl](https://github.com/shufps/dcurl) and [shufps/iota_vhdl_pow](https://github.com/shufps/iota_vhdl_pow)
-  for tracking historical changes outperforming 200x speedup than a Raspberry Pi without hardware hccelerator.
-
-4. [tangle-accelerator](https://github.com/DLTcollab/tangle-accelerator): caching proxy server for IOTA, which can cache API requests and rewrite their responses as needed to be routed through full nodes.
-* An instance of Tangle-accelerator can serve thousands of Tangle requests
-  at once without accessing remote full nodes frequently.
-* As an intermediate server accelerateing interactions with the Tangle,
-  it faciliates dcurl to perform hardware-accelerated PoW operations on
-  edge devices.
-
-5. [remotepow](https://github.com/tylerw1369/remotepow/tree/Dcurl): delegate PoW to remote servers
-
-
-## Licensing
 `dcurl` is freely redistributable under the MIT License.
 Use of this source code is governed by a MIT-style license that can be
 found in the `LICENSE` file.
