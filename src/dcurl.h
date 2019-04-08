@@ -1,8 +1,8 @@
 #ifndef DCURL_H_
 #define DCURL_H_
 
-#include <stdbool.h>
 #include "trinary.h"
+#include <stdbool.h>
 
 bool dcurl_init();
 void dcurl_destroy();

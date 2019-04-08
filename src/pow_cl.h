@@ -1,11 +1,11 @@
 #ifndef POW_CL_H_
 #define POW_CL_H_
 
-#include <stdbool.h>
+#include "trinary.h"
 #include "clcontext.h"
 #include "common.h"
 #include "constants.h"
-#include "trinary.h"
+#include <stdbool.h>
 
 typedef struct _pow_cl_context PoW_CL_Context;
 
@@ -14,12 +14,14 @@ struct _pow_cl_context {
     /* Management of Multi-thread */
     int indexOfContext;
     /* Arguments of PoW */
-    int8_t input_trytes[TRANSACTION_TRYTES_LENGTH];  /* 2673 */
+    int8_t input_trytes[TRANSACTION_TRYTES_LENGTH]; /* 2673 */
     int8_t output_trytes[TRANSACTION_TRYTES_LENGTH]; /* 2673 */
     int mwm;
     /* PoW-related information */
     PoW_Info pow_info;
 };
+
+bool PowCL(void *pow_ctx);
 
 /* Number of GPU devices supported */
 #define MAX_NUM_DEVICES 8

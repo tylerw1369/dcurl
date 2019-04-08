@@ -4,9 +4,9 @@
  * found in the LICENSE file.
  */
 
-#include <pthread.h>
-#include <stdbool.h>
 #include "dcurl.h"
+#include <stdbool.h>
+#include <pthread.h>
 
 static bool isInitialized = false;
 
